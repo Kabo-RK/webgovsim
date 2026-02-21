@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head> 
+    <meta charset="UTF-8"> <!--K A B O-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGovSim</title> <!--Hello!!!-->
+    <style>
+        :root { 
+            --bg: #000000; --panel-top: #ffffff; --panel-bottom: #cccccc;
+            --text-dark: #111111; --text-light: #ffffff;
+            --btn-top: #555555; --btn-bottom: #000000;
+        }
+        
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            background: var(--bg); color: var(--text-light); 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px 20px 60px 20px; 
+            margin: 0; letter-spacing: 0.5px;
+            transition: background-color 1s ease; 
+        }
+
+        @media (min-width: 1450px) { body { padding-right: 200px; } }
+
+        .dashboard {
+            display: grid; grid-template-columns: 1fr; gap: 20px;
+            width: 100%; max-width: 1250px; align-items: start;
+        }
+
+        @media (min-width: 768px) { .dashboard { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 1024px) { .dashboard { grid-template-columns: repeat(3, 1fr); } }
+        
+        .panel { 
+            width: 100%; background: linear-gradient(to bottom, var(--panel-top), var(--panel-bottom)); 
+            color: var(--text-dark); border-radius: 8px; padding: 20px; 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); box-sizing: border-box;
+            transition: transform 0.2s ease;
+        }
+
+        .panel.full-width { grid-column: 1 / -1; }
+        .panel h3 { text-align: center; margin: 0 0 15px 0; font-size: 1.1em; border-bottom: 1px solid #999; padding-bottom: 5px; text-transform: uppercase; }
+
+
+        .hud { 
+            display: grid; grid-template-columns: repeat(4, 1fr) 2fr; gap: 15px; 
+            padding: 15px 20px; margin-bottom: 5px; 
+        }
+        @media (max-width: 800px) { .hud { grid-template-columns: repeat(2, 1fr); } }
+        
+        .hud-item { text-align: center; font-size: 0.8em; text-transform: uppercase; font-weight: bold; position: relative; }
+        .hud-item span.stat-val { display: block; font-size: 1.6em; margin-top: 5px; font-weight: normal; letter-spacing: -1px; transition: color 0.3s;}
+        .projection { font-size: 0.9em; font-weight: bold; margin-top: 4px; white-space: nowrap; }
+        .pos { color: #006600; } .neg { color: #cc0000; }
+        .danger-text { color: #cc0000 !important; font-weight: bold; text-shadow: 0 0 5px rgba(204,0,0,0.5); }
+        .blue-text { color: #0044cc; } .red-text { color: #cc0000; }
+
+ 
+        .congress-container { display: flex; justify-content: space-between; align-items: baseline; margin-top: 5px; position: relative;}
+        .congress-side { position: relative; display: flex; flex-direction: column; align-items: center; width: 40px;}
+        .congress-bar { width: 100%; height: 10px; background: #333; border: 1px solid #777; border-radius: 4px; display: flex; overflow: hidden; margin-top: 5px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5);}
+        .bar-left-fill { background: #0044cc; height: 100%; transition: width 0.3s ease; }
+        .bar-center-fill { background: #555; flex-grow: 1; transition: width 0.3s ease; }
+        .bar-right-fill { background: #cc0000; height: 100%; transition: width 0.3s ease; }
+
+       
+        .floater {
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            font-size: 1.4em; font-weight: bold; pointer-events: none; z-index: 50;
+            text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff;
+            animation: floatUp 2s ease-out forwards;
+        }
+        @keyframes floatUp { 0% { opacity: 1; top: 15px; } 100% { opacity: 0; top: -30px; } }
+
+        
+        .election-tracker {
+            width: 100%; text-align: center; background: #222; color: #fff; padding: 10px; border-radius: 4px;
+            font-size: 0.9em; font-weight: bold; text-transform: uppercase; border: 1px solid #444; letter-spacing: 1px;
+            box-sizing: border-box; display: flex; justify-content: space-between;
+        }
+        .card-title { margin: 0 0 10px 0; font-size: 1.5em; text-align: center; }
+        .card-desc { font-size: 1.05em; line-height: 1.5; margin: 0 0 25px 0; text-align: center; min-height: 80px; }
+        
+        
+        .controls { display: flex; gap: 15px; }
+        .btn { 
+            flex: 1; padding: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer; 
+            background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom));
+            color: var(--text-light); border: 1px solid #000; border-radius: 6px; text-transform: uppercase; transition: all 0.1s ease;
+        }
+        .btn:hover:not(:disabled) { background: linear-gradient(to bottom, #777, #222); transform: translateY(-2px); }
+        .btn:active:not(:disabled) { transform: translateY(1px); }
+        .btn:disabled { background: #555; border-color: #333; color: #888; cursor: not-allowed; }
+
+        
+        .policy-group { margin-bottom: 15px; border-bottom: 1px dashed #999; padding-bottom: 10px; }
+        .policy-group:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .policy-title { font-weight: bold; text-transform: uppercase; font-size: 0.85em; margin-bottom: 5px; display: block;}
+        .slider-labels { display: flex; justify-content: space-between; width: 100%; font-size: 0.70em; font-weight: bold; text-transform: uppercase;}
+        input[type=range] { width: 100%; cursor: pointer; margin: 8px 0; accent-color: #000; }
+
+        
+        .debt-container { background: #111; padding: 10px; border-radius: 4px; border: 2px inset #555; margin-bottom: 15px; }
+        canvas { width: 100%; height: 100px; background: #000; border: 1px solid #333; display: block; }
+        .debt-stats { display: flex; justify-content: space-between; color: #fff; font-size: 0.85em; margin-top: 8px; font-family: monospace; }
+        .debt-warning { color: #ff4444; font-weight: bold; }
+
+        
+        .scroll-box { max-height: 200px; overflow-y: auto; border: 1px inset #888; background: #e5e5e5; padding: 5px 10px; }
+        .scroll-box::-webkit-scrollbar { width: 12px; }
+        .scroll-box::-webkit-scrollbar-track { background: #ccc; border-left: 1px solid #999; }
+        .scroll-box::-webkit-scrollbar-thumb { background: #555; border: 1px solid #222; }
+
+        .store-item { border-bottom: 1px solid #bbb; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .store-item:last-child { border-bottom: none; }
+        .store-item span { font-size: 0.85em; line-height: 1.3; flex: 1; }
+        .store-btn { background: linear-gradient(to bottom, var(--btn-top), var(--btn-bottom)); color: var(--text-light); border: 1px solid #000; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.75em; text-transform: uppercase; min-width: 75px; }
+        .store-btn:disabled { background: #999; border-color: #777; color: #555; cursor: not-allowed; }
+        .covert-btn { background: linear-gradient(to bottom, #990000, #330000); border-color: #ff0000;}
+        .covert-btn:hover:not(:disabled) { background: linear-gradient(to bottom, #cc0000, #550000); }
+        .hired { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; cursor: default !important; font-weight: bold;}
+
+       
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: linear-gradient(to bottom, var(--panel-top), var(--panel-bottom)); color: var(--text-dark); padding: 30px; border-radius: 8px; max-width: 380px; width: 90%; text-align: center; border: 2px solid #555; box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); }
+        .modal-box h2 { margin-top: 0; text-transform: uppercase; border-bottom: 1px solid #999; padding-bottom: 10px; }
+        .modal-box.danger h2 { color: #cc0000; }
+        .modal-box.victory h2 { color: #006600; }
+        .modal-box p { font-size: 1.1em; line-height: 1.4; margin-bottom: 25px; font-weight: bold; }
+
+       
+        .news-ticker {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: #111; border-top: 2px solid #444;
+            color: #00ff00; font-family: monospace; font-size: 1.1em; padding: 8px 0; white-space: nowrap; overflow: hidden; z-index: 100;
+        }
+        .ticker-text { display: inline-block; padding-left: 100%; animation: scrollTicker 18s linear infinite; }
+        .ticker-highlight { color: #ffffff; background: #cc0000; padding: 0 5px; font-weight: bold;}
+        @keyframes scrollTicker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
+        
+        .ad-container {
+            position: fixed; right: 20px; top: 50%; transform: translateY(-50%);
+            width: 160px; height: 600px; background: #111; border: 2px dashed #444;
+            color: #666; display: flex; align-items: center; justify-content: center;
+            text-align: center; font-size: 0.9em; text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8); z-index: 10;
+        }
+
+        
+        .mobile-ad-container {
+            display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 50px;
+            background: #111; border-top: 1px solid #444; color: #666; align-items: center;
+            justify-content: center; text-align: center; font-size: 0.8em; z-index: 105;
+        }
+
+        
+        @media (max-width: 1450px) {
+            .ad-container { display: none; } 
+            .mobile-ad-container { display: flex; } 
+            .news-ticker { bottom: 50px; } 
+            body { padding-bottom: 120px; } 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ad-container" id="ad-space">
+        <p>Ad Space<br><br>160 x 600</p>
+    </div>
+
+    <div id="gameOverModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box danger">
+            <h2 id="modal-title">SYSTEM FAILURE</h2>
+            <p id="modal-desc">Reason goes here...</p>
+            <button class="btn" style="width: 100%;" onclick="closeModalAndReset('gameOverModal')">RETRY</button>
+        </div>
+    </div>
+    <div id="victoryModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box victory">
+            <h2>PRESIDENTIAL LEGACY SECURED</h2>
+            <p>You have successfully navigated 4 grueling terms. The history books will remember your administration.</p>
+            <button class="btn" style="width: 100%;" onclick="closeModalAndReset('victoryModal')">PLAY AGAIN</button>
+        </div>
+    </div>
+    <div id="electionModal" class="modal-overlay" style="display: none;">
+        <div class="modal-box election">
+            <h2>ELECTION CYCLE</h2>
+            <p id="election-desc"></p>
+            <div id="election-actions" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        
+        <div class="panel full-width hud">
+            <div class="hud-item" id="hud-treasury">Treasury<span class="stat-val" id="stat-treasury">$0</span><div id="proj-treasury" class="projection"></div></div>
+            <div class="hud-item" id="hud-pop">Pop.<span class="stat-val" id="stat-pop">0k</span><div id="proj-pop" class="projection"></div></div>
+            <div class="hud-item" id="hud-tension">Tension<span class="stat-val" id="stat-tension">0%</span><div id="proj-tension" class="projection"></div></div>
+            <div class="hud-item" id="hud-approval">Approval<span class="stat-val" id="stat-approval">0%</span><div id="proj-approval" class="projection"></div></div>
+            
+            <div class="hud-item" id="hud-congress">
+                Congress
+                <div class="congress-container">
+                    <div class="congress-side" id="float-left">
+                        <span class="stat-val blue-text" id="stat-left" style="margin-top:0; font-size: 1.4em;">0%</span>
+                        <div id="proj-left" class="projection" style="font-size: 0.8em;"></div>
+                    </div>
+                    <span style="font-size: 0.8em; color: #666; font-weight: bold; margin: 0 10px;">VS</span>
+                    <div class="congress-side" id="float-right">
+                        <span class="stat-val red-text" id="stat-right" style="margin-top:0; font-size: 1.4em;">0%</span>
+                        <div id="proj-right" class="projection" style="font-size: 0.8em;"></div>
+                    </div>
+                </div>
+                <div class="congress-bar">
+                    <div id="bar-left-fill" class="bar-left-fill" style="width: 50%;"></div>
+                    <div id="bar-center-fill" class="bar-center-fill"></div>
+                    <div id="bar-right-fill" class="bar-right-fill" style="width: 50%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="election-tracker" style="margin-bottom: 20px;">
+                <span id="turn-tracker">Next Election: 12 Turns</span>
+                <span id="term-tracker">Term: 1 / 4</span>
+            </div>
+
+            <div class="panel" id="event-panel" style="margin-bottom: 20px;">
+                <h2 class="card-title" id="event-title">System Booting...</h2>
+                <p class="card-desc" id="event-desc">Awaiting executive input.</p>
+                <div class="controls">
+                    <button class="btn" onclick="makeDecision(false)">Veto</button>
+                    <button class="btn" onclick="makeDecision(true)">Accept</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>National Debt</h3>
+                <div class="debt-container">
+                    <canvas id="debtGraph" width="400" height="100"></canvas>
+                    <div class="debt-stats"><span id="debt-total">Total Debt: $0</span><span id="debt-interest" class="debt-warning">Int: $0/turn</span></div>
+                </div>
+                <div class="policy-group" style="margin-top: 10px;">
+                    <span class="policy-title">Debt Repayment</span>
+                    <div class="slider-labels"><span>$0</span><span>$200</span><span>$500</span><span>$1k</span><span>$2k</span></div>
+                    <input type="range" id="debtRepay" min="0" max="4" value="0" oninput="updateProjections()">
+                </div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="panel" style="margin-bottom: 20px;">
+                <h3>National Policy Board</h3>
+                <div class="policy-group"><span class="policy-title">Income Tax</span><div class="slider-labels"><span>V.Low</span><span>Low</span><span>Bal</span><span>High</span><span>V.High</span></div><input type="range" id="taxIncome" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Corporate Tax</span><div class="slider-labels"><span>V.Low</span><span>Low</span><span>Bal</span><span>High</span><span>V.High</span></div><input type="range" id="taxCorp" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Welfare System</span><div class="slider-labels"><span>None</span><span>Low</span><span>Bal</span><span>High</span><span>Max</span></div><input type="range" id="welfare" min="0" max="4" value="1" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Healthcare</span><div class="slider-labels"><span>Priv.</span><span>Basic</span><span>Mixed</span><span>Public</span><span>Uni.</span></div><input type="range" id="healthcare" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Education</span><div class="slider-labels"><span>Defund</span><span>Low</span><span>Bal</span><span>High</span><span>Max</span></div><input type="range" id="education" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Internal Security</span><div class="slider-labels"><span>Lax</span><span>Basic</span><span>Strict</span><span>Heavy</span><span>State</span></div><input type="range" id="security" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Military</span><div class="slider-labels"><span>Disarm</span><span>Low</span><span>Def.</span><span>High</span><span>Impr.</span></div><input type="range" id="military" min="0" max="4" value="2" oninput="updateProjections()"></div>
+                <div class="policy-group"><span class="policy-title">Diplomacy</span><div class="slider-labels"><span>Isol.</span><span>Def.</span><span>Neut.</span><span>Dipl.</span><span>Lead.</span></div><input type="range" id="diplomacy" min="0" max="4" value="2" oninput="updateProjections()"></div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="panel" style="margin-bottom: 20px;">
+                <h3>State Ministries</h3>
+                <div class="scroll-box" style="max-height: 200px;">
+                    <div class="store-item"><span><strong>Min. of Finance</strong><br>+$1,000 / turn</span><button class="store-btn" id="btn-minFinance" onclick="buyMinister('minFinance', 3000)">$3k</button></div>
+                    <div class="store-item"><span><strong>Min. of Info.</strong><br>+4% App. / turn</span><button class="store-btn" id="btn-minInfo" onclick="buyMinister('minInfo', 4000)">$4k</button></div>
+                    <div class="store-item"><span><strong>Min. of Defense</strong><br>+$500, -3% Tension</span><button class="store-btn" id="btn-minDefense" onclick="buyMinister('minDefense', 5000)">$5k</button></div>
+                    <div class="store-item"><span><strong>Sec. of State</strong><br>-5% Tension / turn</span><button class="store-btn" id="btn-secState" onclick="buyMinister('secState', 6000)">$6k</button></div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-bottom: 20px;">
+                <h3>National Projects (Tech Tree)</h3>
+                <div class="scroll-box" style="max-height: 180px;">
+                    <div class="store-item"><span><strong>Cyber Command</strong><br>Neutralizes passive Tension creep.</span><button class="store-btn" id="tech-cyber" onclick="buyTech('cyber', 8000)">$8k</button></div>
+                    <div class="store-item"><span><strong>Fusion Grid</strong><br>+$800 & +500 Pop per turn.</span><button class="store-btn" id="tech-fusion" onclick="buyTech('fusion', 12000)">$12k</button></div>
+                    <div class="store-item"><span><strong>AI Propaganda</strong><br>Passive +2% Approval per turn.</span><button class="store-btn" id="tech-pr" onclick="buyTech('pr', 6000)">$6k</button></div>
+                    <div class="store-item"><span><strong class="red-text">Mass Surveillance</strong><br>Covert Ops never fail. Drains 1% App.</span><button class="store-btn covert-btn" id="tech-surveillance" onclick="buyTech('surveillance', 10000)">$10k</button></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Executive Actions</h3>
+                <div class="scroll-box" style="max-height: 280px;">
+                    <div class="store-item"><span><strong>Propaganda</strong><br>Spend $1.5k: +5% App.</span><button class="store-btn" id="act-propaganda" onclick="buyAction('propaganda')">Run</button></div>
+                    <div class="store-item"><span><strong>Issue Bonds</strong><br>Gain $2k, Add $2.2k Debt</span><button class="store-btn" id="act-bonds" onclick="buyAction('bonds')">Issue</button></div>
+                    <div class="store-item"><span><strong>Corporate Bailout</strong><br>Gain $5k, Add $6.5k Debt</span><button class="store-btn" id="act-bailout" onclick="buyAction('bailout')">Bailout</button></div>
+                    <div class="store-item"><span><strong>Appease Rivals</strong><br>Spend $3k: Drop Tension 15%</span><button class="store-btn" id="act-appease" onclick="buyAction('appease')">Appease</button></div>
+                    
+                    <div class="store-item" style="border-top: 2px dashed #999; margin-top: 5px;">
+                        <span><strong class="red-text">Smear Campaign</strong><br>Cost: $2.5k. Chance to heavily boost factions, or cause outrage.</span>
+                        <button class="store-btn covert-btn" id="act-smear" onclick="buyAction('smear')">Execute</button>
+                    </div>
+                    <div class="store-item">
+                        <span><strong class="red-text">Black Ops</strong><br>Cost: $5k. High chance to drop Tension 40%, fatal if caught.</span>
+                        <button class="store-btn covert-btn" id="act-blackops" onclick="buyAction('blackops')">Execute</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="news-ticker"><span class="ticker-text" id="ticker-content"><span class="ticker-highlight">BREAKING NEWS</span> OVAL OFFICE WELCOMES NEW ADMINISTRATION. PRESS AWAITS FIRST MOVES.</span></div>
+
+    <div class="mobile-ad-container" id="mobile-ad-space">
+        <p>Mobile Ad Space<br>320 x 50</p>
+    </div>
+
+    <script>
+        // Game State
+        let state = { treasury: 5000, approval: 50, pop: 10000, debt: 0, tension: 20, l: 50, r: 50, term: 1 };
+        let debtHistory = [0]; let turnsUntilElection = 12; let electionCost = 6000;
+        let ministries = { minFinance: false, minInfo: false, minDefense: false, secState: false };
+        let techs = { cyber: false, fusion: false, pr: false, surveillance: false };
+        
+        // Expanded Deck (100 Cards)
+        const masterDeck = [
+            // Original 17
+            { title: "Agricultural Collapse", desc: "A massive blight is destroying crops.", onAccept: { t: -1000, a: 5, p: 0, d: 0, ten: 0, l: 5, r: 5 }, newsA: "FEDERAL FUNDS DEPLOYED TO FIGHT CROP BLIGHT.", onVeto: { t: 0, a: -12, p: -800, d: 0, ten: 0, l: -10, r: -10 }, newsV: "PRESIDENT IGNORES FARMERS AS CROPS WITHER." },
+            { title: "Silicon Valley Deal", desc: "Tech giants want tax breaks to build a mega-factory.", onAccept: { t: 2500, a: -5, p: 1500, d: 0, ten: 0, l: -15, r: 20 }, newsA: "TECH GIANTS CELEBRATE MASSIVE TAX BREAKS.", onVeto: { t: 0, a: 5, p: 0, d: 0, ten: 0, l: 15, r: -15 }, newsV: "SILICON VALLEY DEAL VETOED OVER CRONYISM CONCERNS." },
+            { title: "Universal Healthcare", desc: "A radical bill proposes free healthcare for all.", onAccept: { t: -5000, a: 25, p: 2000, d: 0, ten: 0, l: 30, r: -25, slider: { id: 'healthcare', val: 4 } }, newsA: "HISTORIC UNIVERSAL HEALTHCARE BILL SIGNED.", onVeto: { t: 0, a: -15, p: -1000, d: 0, ten: 0, l: -25, r: 15 }, newsV: "RADICAL HEALTHCARE REFORM DEAD ON ARRIVAL." },
+            { title: "Military Draft", desc: "Generals want to institute a mandatory draft.", onAccept: { t: 1000, a: -20, p: 5000, d: 0, ten: 15, l: -30, r: 25 }, newsA: "MANDATORY DRAFT REINSTATED. PROTESTS ERUPT.", onVeto: { t: 0, a: 10, p: 0, d: 0, ten: 0, l: 20, r: -15 }, newsV: "DRAFT REJECTED. MILITARY BRASS EXPRESSES CONCERN." },
+            { title: "Border Crisis", desc: "Refugees are fleeing a war next door. Accept them?", onAccept: { t: -1500, a: -5, p: 4000, d: 0, ten: 10, l: 20, r: -25 }, newsA: "BORDERS OPENED TO WAR REFUGEES.", onVeto: { t: 0, a: 5, p: 0, d: 0, ten: -5, l: -20, r: 20 }, newsV: "BORDERS CLOSED TIGHT. REFUGEES TURNED AWAY." },
+            { title: "Cyberwarfare", desc: "Foreign hackers crippled the grid. Retaliate and upgrade?", onAccept: { t: -3000, a: 5, p: 0, d: 0, ten: 15, l: -5, r: 15 }, newsA: "MASSIVE CYBER-RETALIATION LAUNCHED AGAINST FOREIGN ACTORS.", onVeto: { t: 0, a: -20, p: -500, d: 0, ten: -5, l: 5, r: -15 }, newsV: "WHITE HOUSE DOWNPLAYS CYBER ATTACK ON GRID." },
+            { title: "Billionaire Tax", desc: "Propose a massive wealth tax to fund infrastructure.", onAccept: { t: 4000, a: 10, p: 0, d: 0, ten: 0, l: 25, r: -30 }, newsA: "HISTORIC WEALTH TAX PASSED. WALL STREET OUTRAGED.", onVeto: { t: 0, a: -10, p: 0, d: 0, ten: 0, l: -25, r: 20 }, newsV: "BILLIONAIRE TAX VETOED. PRESIDENT PROTECTS THE 1%." },
+            { title: "Corporate Deregulation", desc: "Remove environmental blocks to spur rapid growth.", onAccept: { t: 3000, a: -10, p: 0, d: 0, ten: 0, l: -25, r: 25 }, newsA: "ENVIRONMENTAL REGULATIONS SLASHED. INDUSTRY BOOMS.", onVeto: { t: 0, a: 10, p: 0, d: 0, ten: 0, l: 20, r: -20 }, newsV: "DEREGULATION HALTED. CLIMATE ACTIVISTS DECLARE VICTORY." },
+            { title: "Bank Collapse", desc: "A major commercial bank is failing. Bail them out?", onAccept: { t: 0, a: -15, p: -1000, d: 0, ten: 0, l: -20, r: 15 }, newsA: "FEDERAL RESERVE BAILS OUT FAILING BANK.", onVeto: { t: -4000, a: 5, p: 0, d: 4000, ten: 0, l: 20, r: -25 }, newsV: "PRESIDENT LETS MEGA-BANK FAIL. ECONOMIC SHOCKWAVES HIT." },
+            { title: "Union Strike", desc: "Transport workers have halted all trains. Yield to them?", onAccept: { t: -1200, a: 10, p: 0, d: 0, ten: 0, l: 20, r: -15 }, newsA: "WHITE HOUSE CAVED TO UNION DEMANDS. TRAINS RUNNING.", onVeto: { t: -500, a: -15, p: -200, d: 0, ten: 0, l: -25, r: 15 }, newsV: "PRESIDENT CRACKS DOWN ON UNION STRIKE." },
+            { title: "Pandemic Outbreak", desc: "A highly contagious virus is spreading rapidly. Order lockdowns?", onAccept: { t: -2500, a: -10, p: -100, d: 0, ten: 5, l: 15, r: -20, slider: { id: 'security', val: 3 } }, newsA: "STRICT LOCKDOWNS MANDATED NATIONWIDE.", onVeto: { t: 1500, a: -20, p: -2500, d: 0, ten: 0, l: -25, r: 15 }, newsV: "WHITE HOUSE REFUSES LOCKDOWNS. HOSPITALS OVERWHELMED." },
+            { title: "AI Singularity", desc: "An untethered AI has been developed. Heavily regulate it?", onAccept: { t: -1500, a: 5, p: 0, d: 0, ten: -5, l: 15, r: -10 }, newsA: "STRICT AI OVERSIGHT CREATED TO PREVENT 'DOOMSDAY'.", onVeto: { t: 4000, a: -10, p: 500, d: 0, ten: 15, l: -20, r: 20 }, newsV: "UNREGULATED AI BOOMS. WIDESPREAD JOB DISPLACEMENT." },
+            { title: "Lunar Colony Initiative", desc: "NASA requests massive funding for a moon base.", onAccept: { t: -6000, a: 15, p: 500, d: 0, ten: -5, l: 10, r: 10 }, newsA: "PRESIDENT ANNOUNCES LUNAR COLONY INITIATIVE.", onVeto: { t: 0, a: -5, p: 0, d: 0, ten: 0, l: -5, r: -5 }, newsV: "LUNAR COLONY DREAMS SCRAPPED OVER BUDGET CONCERNS." },
+            { title: "Oil Embargo", desc: "Foreign powers have cut off oil supplies. Subsidize gas prices?", onAccept: { t: -3000, a: 10, p: 0, d: 0, ten: 0, l: -10, r: 20 }, newsA: "MASSIVE SUBSIDIES KEEP GAS PRICES LOW DURING EMBARGO.", onVeto: { t: 0, a: -20, p: -300, d: 0, ten: 5, l: 20, r: -20 }, newsV: "GAS PRICES SKYROCKET. CITIZENS ABANDON CARS." },
+            { title: "Corporate Espionage", desc: "CIA obtained stolen tech blueprints. Utilize them?", onAccept: { t: 2000, a: 5, p: 0, d: 0, ten: 25, l: -10, r: 15 }, newsA: "U.S. TECH SECTOR MYSTERIOUSLY LEAPS FORWARD.", onVeto: { t: 0, a: 0, p: 0, d: 0, ten: -10, l: 10, r: -5 }, newsV: "PRESIDENT DECLINES STOLEN BLUEPRINTS." },
+            { title: "Gun Control Act", desc: "Calls for an absolute ban on assault weapons.", onAccept: { t: -500, a: 5, p: 0, d: 0, ten: 5, l: 30, r: -35 }, newsA: "CONTROVERSIAL ASSAULT WEAPONS BAN PASSED.", onVeto: { t: 0, a: -5, p: 0, d: 0, ten: 5, l: -30, r: 20 }, newsV: "GUN CONTROL LEGISLATION FAILS." },
+            { title: "Student Debt Jubilee", desc: "Cancel student loan debt to stimulate the middle class?", onAccept: { t: -4500, a: 15, p: 0, d: 4500, ten: 0, l: 35, r: -25 }, newsA: "MILLIONS REJOICE AS STUDENT DEBT IS ERASED.", onVeto: { t: 0, a: -10, p: 0, d: 0, ten: 0, l: -20, r: 15 }, newsV: "STUDENT LOAN BAILOUT VETOED." },
+            // Batch 2 (50 cards from previous iteration)
+            { title: "Space Force Funding", desc: "Establish a dedicated military branch for orbital defense.", onAccept: { t:-2000, a:5, p:0, d:0, ten:15, l:-15, r:20 }, newsA: "SPACE FORCE OFFICIALLY LAUNCHED. ORBITAL WEAPONRY DEPLOYED.", onVeto: { t:0, a:-5, p:0, d:0, ten:-5, l:10, r:-15 }, newsV: "MILITARIZATION OF SPACE HALTED BY OVAL OFFICE." },
+            { title: "Mars Mission", desc: "Fund a manned expedition to Mars.", onAccept: { t:-4000, a:15, p:200, d:0, ten:0, l:10, r:10 }, newsA: "HUMANITY HEADS TO MARS. NATION UNITES BEHIND ASTRONAUTS.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:-5, r:-5 }, newsV: "MARS MISSION DEFUNDED. SCIENCE COMMUNITY IN MOURNING." },
+            { title: "Asteroid Mining", desc: "Subsidize private corps to mine near-Earth asteroids.", onAccept: { t:3500, a:-5, p:0, d:0, ten:5, l:-15, r:20 }, newsA: "ASTEROID MINING BRINGS TRILLIONS IN RARE METALS TO EARTH.", onVeto: { t:0, a:5, p:0, d:0, ten:0, l:10, r:-10 }, newsV: "ASTEROID MINING BANNED DUE TO ORBITAL DEBRIS FEARS." },
+            { title: "Deep Sea Drilling", desc: "Open protected oceans to massive oil conglomerates.", onAccept: { t:2500, a:-10, p:0, d:0, ten:0, l:-25, r:20 }, newsA: "OFFSHORE DRILLING EXPANDED. ENVIRONMENTALISTS PROTEST.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:20, r:-20 }, newsV: "OCEAN SANCTUARIES PROTECTED FROM OIL DRILLING." },
+            { title: "Universal Basic Income", desc: "Guarantee a monthly stipend for all citizens.", onAccept: { t:-7000, a:25, p:1000, d:3000, ten:0, l:35, r:-30 }, newsA: "UBI PASSED. POVERTY PLUMMETS, BUT DEFICIT SKYROCKETS.", onVeto: { t:0, a:-15, p:-500, d:0, ten:5, l:-25, r:15 }, newsV: "UBI REJECTED. WEALTH GAP CONTINUES TO WIDEN." },
+            { title: "Crypto Integration", desc: "Adopt cryptocurrency as legal tender alongside the dollar.", onAccept: { t:1500, a:0, p:0, d:0, ten:10, l:-15, r:15 }, newsA: "GOVERNMENT ADOPTS CRYPTO. MARKETS HIGHLY VOLATILE.", onVeto: { t:0, a:0, p:0, d:0, ten:0, l:10, r:-10 }, newsV: "CRYPTO CRACKDOWN. FEDERAL RESERVE MAINTAINS FIAT CONTROL." },
+            { title: "Gene Editing Clinic", desc: "Legalize commercial CRISPR enhancements for citizens.", onAccept: { t:-1000, a:10, p:1500, d:0, ten:5, l:15, r:-20 }, newsA: "DESIGNER BABIES LEGALIZED. ETHICAL DEBATES RAGE ON.", onVeto: { t:0, a:-5, p:0, d:0, ten:-5, l:-15, r:15 }, newsV: "GENE EDITING BANNED. RELIGIOUS GROUPS CELEBRATE." },
+            { title: "Mandatory Fitness", desc: "Institute mandatory daily exercise for all citizens.", onAccept: { t:-500, a:-15, p:2000, d:0, ten:0, l:10, r:-10 }, newsA: "NATIONWIDE MANDATORY FITNESS REGIME ENACTED. OBESITY PLUMMETS.", onVeto: { t:0, a:5, p:-500, d:0, ten:0, l:-5, r:10 }, newsV: "STATE-ENFORCED EXERCISE VETOED. FREEDOM TO BE LAZY UPHELD." },
+            { title: "Drug Legalization", desc: "Legalize and tax all recreational narcotics.", onAccept: { t:3000, a:10, p:-200, d:0, ten:-10, l:25, r:-30 }, newsA: "WAR ON DRUGS ENDS. ALL NARCOTICS LEGALIZED AND TAXED.", onVeto: { t:-1500, a:-5, p:-500, d:0, ten:10, l:-20, r:20 }, newsV: "WAR ON DRUGS ESCALATES. CARTEL VIOLENCE SPIKES." },
+            { title: "Private Prisons", desc: "Privatize the entire federal penitentiary system.", onAccept: { t:2000, a:-10, p:0, d:0, ten:5, l:-25, r:25 }, newsA: "PRISON SYSTEM PRIVATIZED. INCARCERATION RATES HIT RECORD HIGHS.", onVeto: { t:-1500, a:10, p:0, d:0, ten:-5, l:20, r:-20 }, newsV: "PRIVATE PRISONS OUTLAWED. CRIMINAL JUSTICE REFORM ADVANCES." },
+            { title: "High-Speed Rail", desc: "Build a continental bullet train network.", onAccept: { t:-4000, a:15, p:500, d:0, ten:0, l:20, r:-10 }, newsA: "CONTINENTAL BULLET TRAIN CONNECTS COAST TO COAST.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:-15, r:10 }, newsV: "INFRASTRUCTURE BILL FAILS. HIGHWAYS REMAIN GRIDLOCKED." },
+            { title: "Nuclear Power Revival", desc: "Subsidize the construction of next-gen fission reactors.", onAccept: { t:-3000, a:-5, p:1000, d:0, ten:0, l:-10, r:15 }, newsA: "NUCLEAR RENAISSANCE BEGINS. CHEAP ENERGY FLOODS THE GRID.", onVeto: { t:0, a:5, p:-200, d:0, ten:0, l:15, r:-10 }, newsV: "NUCLEAR REACTORS HALTED DUE TO SAFETY CONCERNS." },
+            { title: "Meat Tax", desc: "Heavily tax animal products to combat climate change.", onAccept: { t:1500, a:-20, p:0, d:0, ten:0, l:20, r:-30 }, newsA: "HEAVY MEAT TAX ENACTED. BARBECUES BECOME A LUXURY.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:-15, r:20 }, newsV: "MEAT TAX SLAUGHTERED IN CONGRESS. BEEF INDUSTRY THRIVES." },
+            { title: "Four-Day Work Week", desc: "Mandate a 32-hour work week with no loss in pay.", onAccept: { t:-2000, a:25, p:500, d:0, ten:0, l:30, r:-25 }, newsA: "FOUR-DAY WORK WEEK BECOMES LAW. PRODUCTIVITY DEBATED.", onVeto: { t:1000, a:-15, p:0, d:0, ten:5, l:-20, r:25 }, newsV: "FOUR-DAY WORK WEEK VETOED. CORPORATIONS BREATHE SIGH OF RELIEF." },
+            { title: "Trade War", desc: "Slap massive tariffs on a rival economic superpower.", onAccept: { t:-1500, a:5, p:0, d:0, ten:20, l:-10, r:25 }, newsA: "BRUTAL TRADE WAR INITIATED. CONSUMER PRICES SURGE.", onVeto: { t:500, a:-5, p:0, d:0, ten:-10, l:15, r:-15 }, newsV: "PRESIDENT BACKS DOWN ON TARIFFS. FREE TRADE MAINTAINED." },
+            { title: "Foreign Aid Package", desc: "Send billions to stabilize a developing region.", onAccept: { t:-2500, a:-5, p:0, d:0, ten:-15, l:15, r:-15 }, newsA: "MASSIVE FOREIGN AID SENT OVERSEAS AMID DOMESTIC GRUMBLING.", onVeto: { t:0, a:5, p:0, d:0, ten:15, l:-10, r:15 }, newsV: "FOREIGN AID BLOCKED. 'AMERICA FIRST' POLICY REAFFIRMED." },
+            { title: "Mega-Dam Project", desc: "Flood a historic valley to build an enormous hydro-dam.", onAccept: { t:-3000, a:-10, p:1200, d:0, ten:0, l:-20, r:10 }, newsA: "HISTORIC VALLEY FLOODED FOR MEGA-DAM. POWER GRID SECURED.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:15, r:-10 }, newsV: "MEGA-DAM CANCELLED. HISTORIC VALLEY PRESERVED." },
+            { title: "Nationalize Tech", desc: "Seize control of the biggest tech monopolies.", onAccept: { t:5000, a:-15, p:0, d:0, ten:10, l:35, r:-40 }, newsA: "TECH GIANTS NATIONALIZED. STOCK MARKET IN FREEFALL.", onVeto: { t:0, a:5, p:0, d:0, ten:0, l:-20, r:20 }, newsV: "TECH MONOPOLIES SPARED FROM GOVERNMENT TAKEOVER." },
+            { title: "Ban Social Media", desc: "Outlaw major social platforms to stop misinformation.", onAccept: { t:-500, a:-30, p:0, d:0, ten:-10, l:-15, r:15 }, newsA: "SOCIAL MEDIA BANNED NATIONWIDE. CITIZENS FORCED OUTSIDE.", onVeto: { t:0, a:10, p:0, d:0, ten:15, l:10, r:-10 }, newsV: "PRESIDENT REFUSES TO BAN SOCIAL MEDIA. MISINFORMATION SPREADS." },
+            { title: "Water Rationing", desc: "A historic drought requires strict water limits.", onAccept: { t:-1000, a:-15, p:-100, d:0, ten:0, l:15, r:-15 }, newsA: "STRICT WATER RATIONING ENFORCED AS DROUGHT WORSENS.", onVeto: { t:0, a:5, p:-800, d:0, ten:5, l:-15, r:10 }, newsV: "WATER RATIONING VETOED. RESERVOIRS DRY UP COMPLETELY." },
+            { title: "Extraterrestrial Signal", desc: "Declassify an alien transmission received by SETI.", onAccept: { t:0, a:15, p:0, d:0, ten:25, l:10, r:10 }, newsA: "ALIEN SIGNAL DECLASSIFIED! WE ARE NOT ALONE. PANIC ENSUES.", onVeto: { t:0, a:-5, p:0, d:0, ten:-5, l:-5, r:-5 }, newsV: "GOVERNMENT COVERS UP UNIDENTIFIED SPACE ANOMALY." },
+            { title: "Super-Soldier Serum", desc: "Greenlight human trials for military combat enhancements.", onAccept: { t:-2500, a:-10, p:0, d:0, ten:20, l:-25, r:25 }, newsA: "SUPER-SOLDIER PROGRAM REVEALED. GLOBAL ARMS RACE BEGINS.", onVeto: { t:0, a:5, p:0, d:0, ten:-10, l:15, r:-15 }, newsV: "UNETHICAL MILITARY HUMAN TRIALS BANNED." },
+            { title: "Drone Police Force", desc: "Deploy autonomous armed drones for city patrols.", onAccept: { t:-2000, a:-20, p:500, d:0, ten:10, l:-30, r:25 }, newsA: "AUTONOMOUS DRONE POLICE PATROL STREETS. CRIME DROPS, FEAR RISES.", onVeto: { t:0, a:10, p:-200, d:0, ten:-5, l:20, r:-20 }, newsV: "ROBO-COPS REJECTED. HUMAN POLICING REMAINS." },
+            { title: "Free College", desc: "Make all public universities tuition-free.", onAccept: { t:-4000, a:20, p:800, d:0, ten:0, l:35, r:-30 }, newsA: "TUITION-FREE COLLEGE ENACTED. ENROLLMENT SKYROCKETS.", onVeto: { t:0, a:-10, p:0, d:0, ten:0, l:-25, r:20 }, newsV: "FREE COLLEGE BILL DIES. STUDENT DEBT CRISIS WORSENS." },
+            { title: "Wealth Cap", desc: "Cap personal net worth at $1 Billion.", onAccept: { t:6000, a:10, p:0, d:0, ten:15, l:40, r:-40 }, newsA: "BILLIONAIRE WEALTH CAP INSTITUTED. ELITES FLEE THE COUNTRY.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:-30, r:25 }, newsV: "WEALTH CAP REJECTED AS 'UN-AMERICAN'." },
+            { title: "Limit Voting Age", desc: "Raise the national voting age to 25.", onAccept: { t:0, a:-25, p:0, d:0, ten:10, l:-35, r:30 }, newsA: "VOTING AGE RAISED TO 25. YOUTH PROTESTS ERUPT.", onVeto: { t:0, a:10, p:0, d:0, ten:-5, l:20, r:-20 }, newsV: "ATTEMPT TO RAISE VOTING AGE BLOCKED." },
+            { title: "Expand Supreme Court", desc: "Pack the highest court with 4 new justices.", onAccept: { t:-500, a:-10, p:0, d:0, ten:20, l:30, r:-40 }, newsA: "SUPREME COURT PACKED. CONSTITUTIONAL CRISIS LOOMS.", onVeto: { t:0, a:5, p:0, d:0, ten:-5, l:-20, r:20 }, newsV: "PRESIDENT DECLINES TO EXPAND SUPREME COURT." },
+            { title: "Smart City Initiative", desc: "Retrofit the capital with omnipresent sensors.", onAccept: { t:-3000, a:5, p:800, d:0, ten:5, l:-10, r:15 }, newsA: "SMART CITY RETROFIT COMPLETED. SURVEILLANCE CONCERNS RAISED.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:10, r:-10 }, newsV: "SMART CITY FUNDING DENIED OVER PRIVACY FEARS." },
+            { title: "Synthetic Food Subsidy", desc: "Subsidize lab-grown nutrient paste to end hunger.", onAccept: { t:-1500, a:10, p:2000, d:0, ten:0, l:15, r:-10 }, newsA: "LAB-GROWN PASTE SUBSIDIZED. NO ONE STARVES, NO ONE SMILES.", onVeto: { t:0, a:-10, p:-1000, d:0, ten:5, l:-10, r:10 }, newsV: "SYNTHETIC FOOD VETOED. TRADITIONAL AGRICULTURE STRUGGLES." },
+            { title: "Autonomous Trucking", desc: "Ban human-driven freight trucks on highways.", onAccept: { t:1000, a:-15, p:0, d:0, ten:5, l:-20, r:20 }, newsA: "TRUCKERS OUTLAWED. AI FREIGHT NETWORKS TAKE OVER.", onVeto: { t:-500, a:10, p:0, d:0, ten:-5, l:20, r:-15 }, newsV: "HUMAN TRUCKERS PROTECTED FROM AUTOMATION." },
+            { title: "Global Carbon Tax", desc: "Sign an aggressive international carbon pricing treaty.", onAccept: { t:2500, a:-10, p:0, d:0, ten:10, l:30, r:-30 }, newsA: "PUNISHING CARBON TAX SIGNED. MANUFACTURING EXODUS BEGINS.", onVeto: { t:0, a:10, p:0, d:0, ten:-10, l:-25, r:25 }, newsV: "INTERNATIONAL CLIMATE TREATY ABANDONED." },
+            { title: "Defund the Police", desc: "Reallocate federal law enforcement budgets to social workers.", onAccept: { t:3000, a:-20, p:0, d:0, ten:15, l:35, r:-40 }, newsA: "POLICE HEAVILY DEFUNDED. CRIME RATES VOLATILE.", onVeto: { t:0, a:10, p:0, d:0, ten:-5, l:-25, r:30 }, newsV: "LAW AND ORDER MAINTAINED. POLICE FUNDING SECURE." },
+            { title: "Olympic Games Host", desc: "Spend heavily to host the global sporting event.", onAccept: { t:-5000, a:20, p:500, d:0, ten:-10, l:10, r:10 }, newsA: "NATION SECURES OLYMPIC BID! TREASURY DRAINED.", onVeto: { t:0, a:-10, p:0, d:0, ten:0, l:-5, r:-5 }, newsV: "OLYMPIC BID WITHDRAWN DUE TO COST CONCERNS." },
+            { title: "Banish Pennies", desc: "Discontinue the production of the 1-cent coin.", onAccept: { t:500, a:0, p:0, d:0, ten:0, l:5, r:5 }, newsA: "PENNIES OFFICIALLY ABOLISHED. CASH REGISTERS CONFUSED.", onVeto: { t:-100, a:0, p:0, d:0, ten:0, l:-5, r:-5 }, newsV: "THE PENNY LIVES TO SEE ANOTHER DAY." },
+            { title: "Cybernetic Implants", desc: "Allow citizens to augment brains with microchips.", onAccept: { t:-1000, a:5, p:1000, d:0, ten:10, l:10, r:-15 }, newsA: "BRAIN CHIPS APPROVED FOR CONSUMER USE.", onVeto: { t:0, a:-5, p:0, d:0, ten:-5, l:-10, r:10 }, newsV: "CYBERNETIC AUGMENTATION BANNED FOR CIVILIANS." },
+            { title: "Legalize Cloning", desc: "Permit corporations to clone human beings.", onAccept: { t:-2000, a:-25, p:3000, d:0, ten:20, l:15, r:-35 }, newsA: "HUMAN CLONING LEGALIZED. RELIGIOUS LEADERS DECLARE HERESY.", onVeto: { t:0, a:15, p:0, d:0, ten:-10, l:-10, r:20 }, newsV: "HUMAN CLONING STRICTLY OUTLAWED." },
+            { title: "National Broadband", desc: "Treat high-speed internet as a public utility.", onAccept: { t:-3500, a:15, p:500, d:0, ten:0, l:25, r:-20 }, newsA: "INTERNET NATIONALIZED. EVERY HOME CONNECTED FOR FREE.", onVeto: { t:0, a:-10, p:0, d:0, ten:0, l:-20, r:15 }, newsV: "ISPS MAINTAIN MONOPOLY AS BROADBAND BILL FAILS." },
+            { title: "Sell National Parks", desc: "Auction off preserved lands to logging companies.", onAccept: { t:6000, a:-25, p:-200, d:0, ten:10, l:-35, r:25 }, newsA: "NATIONAL PARKS AUCTIONED OFF. YELLOWSTONE TO BE STRIP-MINED.", onVeto: { t:0, a:15, p:0, d:0, ten:0, l:25, r:-20 }, newsV: "NATIONAL PARKS SAVED FROM THE CHOPPING BLOCK." },
+            { title: "Corporate Tax Holiday", desc: "Zero taxes for massive corporations for one year.", onAccept: { t:-4000, a:-10, p:1000, d:0, ten:0, l:-25, r:30 }, newsA: "CORPORATE TAX HOLIDAY ENACTED. CEO BONUSES SOAR.", onVeto: { t:2000, a:10, p:-500, d:0, ten:0, l:20, r:-25 }, newsV: "TAX HOLIDAY DENIED. CORPORATIONS THREATEN LAYOFFS." },
+            { title: "Universal Childcare", desc: "State-funded daycare for all working parents.", onAccept: { t:-3000, a:20, p:1500, d:0, ten:0, l:30, r:-20 }, newsA: "FREE CHILDCARE SIGNED INTO LAW. BIRTH RATES SURGE.", onVeto: { t:0, a:-15, p:-500, d:0, ten:0, l:-25, r:15 }, newsV: "UNIVERSAL CHILDCARE REJECTED. PARENTS STRUGGLE." },
+            { title: "Space Elevator", desc: "Commit astronomical funds to build a space tether.", onAccept: { t:-8000, a:10, p:500, d:2000, ten:-5, l:15, r:15 }, newsA: "CONSTRUCTION BEGINS ON EARTH'S FIRST SPACE ELEVATOR.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:-5, r:-5 }, newsV: "SPACE ELEVATOR DEEMED 'SCIENCE FICTION' AND SCRAPPED." },
+            { title: "AI Judges", desc: "Replace traffic and civil courts with impartial AI algorithms.", onAccept: { t:2000, a:-10, p:0, d:0, ten:10, l:-15, r:20 }, newsA: "AI JUDGES APPOINTED TO LOWER COURTS. EFFICIENCY UP, EMPATHY GONE.", onVeto: { t:-1000, a:5, p:0, d:0, ten:0, l:15, r:-10 }, newsV: "JUSTICE REMAINS HUMAN. COURTS REMAIN BACKLOGGED." },
+            { title: "Genetic Privacy Act", desc: "Prevent corporations from buying citizen DNA data.", onAccept: { t:-500, a:15, p:0, d:0, ten:0, l:20, r:-10 }, newsA: "GENETIC PRIVACY ACT PASSED. PHARMA GIANTS FURIOUS.", onVeto: { t:1500, a:-15, p:0, d:0, ten:5, l:-15, r:20 }, newsV: "YOUR DNA IS FOR SALE. CORPORATE DATABASES GROW." },
+            { title: "Ban Gasoline Cars", desc: "Outlaw the sale of new internal combustion vehicles.", onAccept: { t:-1500, a:-10, p:0, d:0, ten:10, l:30, r:-35 }, newsA: "GAS CARS BANNED. NATION FORCED TO GO ELECTRIC.", onVeto: { t:0, a:10, p:0, d:0, ten:-5, l:-25, r:25 }, newsV: "INTERNAL COMBUSTION ENGINE SAVED BY PRESIDENTIAL VETO." },
+            { title: "Robot Tax", desc: "Tax companies for every human worker they replace with automation.", onAccept: { t:3000, a:15, p:0, d:0, ten:0, l:25, r:-25 }, newsA: "ROBOT TAX ENACTED TO SAVE HUMAN JOBS.", onVeto: { t:-1000, a:-15, p:500, d:0, ten:10, l:-20, r:20 }, newsV: "AUTOMATION CONTINUES UNTAXED. LAYOFFS ACCELERATE." },
+            { title: "Decriminalize Sex Work", desc: "Legalize and regulate the world's oldest profession.", onAccept: { t:2500, a:5, p:0, d:0, ten:0, l:30, r:-40 }, newsA: "SEX WORK DECRIMINALIZED. CONSERVATIVES OUTRAGED.", onVeto: { t:-500, a:-5, p:0, d:0, ten:0, l:-25, r:25 }, newsV: "SEX WORK REMAINS ILLEGAL. ARRESTS CONTINUE." },
+            { title: "State-Run Media", desc: "Consolidate news networks into a single government broadcast.", onAccept: { t:-2000, a:-20, p:0, d:0, ten:25, l:-30, r:30 }, newsA: "STATE-RUN MEDIA LAUNCHED. FREE PRESS MOURNED.", onVeto: { t:0, a:10, p:0, d:0, ten:-10, l:20, r:-20 }, newsV: "INDEPENDENT JOURNALISM PROTECTED FROM OVAL OFFICE TAKEOVER." },
+            { title: "Mandatory Service", desc: "Require 2 years of civil or military service for 18-year-olds.", onAccept: { t:1500, a:-15, p:1000, d:0, ten:0, l:-20, r:25 }, newsA: "MANDATORY YOUTH SERVICE ENACTED. NATION REBUILDS ITSELF.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:15, r:-15 }, newsV: "MANDATORY SERVICE REJECTED. YOUTH BREATHE EASY." },
+            { title: "Banish Time Zones", desc: "Switch the entire country to a single unified time zone.", onAccept: { t:-500, a:-10, p:0, d:0, ten:5, l:-5, r:5 }, newsA: "TIME ZONES ABOLISHED. WEST COAST IN THE DARK AT NOON.", onVeto: { t:0, a:5, p:0, d:0, ten:0, l:5, r:-5 }, newsV: "TEMPORAL SANITY MAINTAINED. TIME ZONES REMAIN." },
+            { title: "Clone the President", desc: "Secretly fund a backup clone of yourself. Just in case.", onAccept: { t:-3000, a:-5, p:0, d:0, ten:15, l:-10, r:-10 }, newsA: "RUMORS SWIRL OF 'PRESIDENTIAL DOUBLE' IN OVAL OFFICE.", onVeto: { t:0, a:0, p:0, d:0, ten:0, l:0, r:0 }, newsV: "PRESIDENT REMAINS A SINGLE, MORTAL ENTITY." },
+            // NEW 33 CARDS (to reach 100)
+            { title: "Asteroid Deflection", desc: "A massive asteroid is approaching. Fund an emergency deflection mission.", onAccept: { t:-5000, a:20, p:0, d:0, ten:0, l:10, r:10 }, newsA: "ASTEROID DEFLECTED! PRESIDENT HAILED AS SAVIOR OF HUMANITY.", onVeto: { t:0, a:-30, p:-5000, d:0, ten:15, l:-10, r:-10 }, newsV: "ASTEROID STRIKES UNPOPULATED REGION. MASSIVE CASUALTIES NARROWLY AVOIDED." },
+            { title: "Hollow Earth Discovery", desc: "Fund a drilling expedition to investigate anomalous subterranean readings.", onAccept: { t:-2000, a:5, p:0, d:0, ten:5, l:0, r:0 }, newsA: "SUBTERRANEAN EXPEDITION DISCOVERS NEW MINERALS DEEP IN THE CRUST.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:0, r:0 }, newsV: "HOLLOW EARTH THEORY DISMISSED BY WHITE HOUSE AS 'PSEUDOSCIENCE'." },
+            { title: "Ocean Acidification", desc: "Heavily regulate fisheries and ocean transport to save marine life.", onAccept: { t:-1500, a:5, p:0, d:0, ten:0, l:20, r:-25 }, newsA: "STRICT OCEAN REGULATIONS ENACTED. FISHING INDUSTRY SUFFERS.", onVeto: { t:1000, a:-10, p:-200, d:0, ten:0, l:-20, r:20 }, newsV: "OCEAN REGULATIONS VETOED. CORAL REEFS CONTINUE TO DIE." },
+            { title: "Teleportation Tech", desc: "Approve civilian use of experimental quantum teleportation nodes.", onAccept: { t:-3000, a:15, p:1000, d:0, ten:10, l:15, r:15 }, newsA: "QUANTUM TELEPORTATION GOES PUBLIC. AIRLINES FILE FOR BANKRUPTCY.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:-10, r:10 }, newsV: "TELEPORTATION BANNED DUE TO 'EXISTENTIAL SAFETY CONCERNS'." },
+            { title: "Immortal Jellyfish Serum", desc: "Patent an extreme life-extension serum for the ultra-wealthy.", onAccept: { t:5000, a:-20, p:0, d:0, ten:15, l:-30, r:35 }, newsA: "BILLIONAIRES CHEAT DEATH WITH NEW SERUM. PUBLIC OUTRAGED.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:20, r:-20 }, newsV: "LIFE EXTENSION SERUM CLASSIFIED AS UNETHICAL AND DESTROYED." },
+            { title: "Mandatory Chip Implants", desc: "Microchip all convicted felons to track them permanently.", onAccept: { t:-1000, a:-10, p:0, d:0, ten:5, l:-30, r:30 }, newsA: "FELONS CHIPPED NATIONWIDE. CIVIL RIGHTS GROUPS SUE GOVERNMENT.", onVeto: { t:0, a:10, p:0, d:0, ten:-5, l:25, r:-25 }, newsV: "MANDATORY CHIPPING RULED UNCONSTITUTIONAL." },
+            { title: "Ban Refined Sugar", desc: "Outlaw all processed sugars to combat the obesity epidemic.", onAccept: { t:1000, a:-25, p:500, d:0, ten:0, l:15, r:-20 }, newsA: "SUGAR BANNED. BLACK MARKET CANDY CARTELS EMERGE.", onVeto: { t:0, a:10, p:-500, d:0, ten:0, l:-15, r:10 }, newsV: "SUGAR BAN REJECTED. DENTISTS REJOICE." },
+            { title: "Robot Rights Bill", desc: "Grant basic constitutional rights to sentient AI entities.", onAccept: { t:0, a:-15, p:2000, d:0, ten:10, l:35, r:-40 }, newsA: "ROBOTS RECOGNIZED AS CITIZENS. CONSERVATIVES OUTRAGED.", onVeto: { t:0, a:5, p:0, d:0, ten:-5, l:-20, r:25 }, newsV: "AI RIGHTS BILL VETOED. MACHINES REMAIN PROPERTY." },
+            { title: "Mars Secession", desc: "The Mars colony is demanding independence. Let them go?", onAccept: { t:-2000, a:-15, p:-500, d:0, ten:-10, l:10, r:-20 }, newsA: "MARS COLONY GRANTED INDEPENDENCE. EARTH LOSES INTERPLANETARY GRIP.", onVeto: { t:0, a:10, p:0, d:0, ten:25, l:-10, r:20 }, newsV: "PRESIDENT REFUSES MARS INDEPENDENCE. MILITARY SENT TO RED PLANET." },
+            { title: "Underground Cities", desc: "Start building massive subterranean vaults in case of apocalypse.", onAccept: { t:-6000, a:10, p:0, d:2000, ten:-5, l:-5, r:15 }, newsA: "DOOMSDAY VAULTS UNDER CONSTRUCTION. PUBLIC FEARS THE WORST.", onVeto: { t:0, a:-5, p:0, d:0, ten:0, l:5, r:-5 }, newsV: "DOOMSDAY PREP FUNDING DENIED." },
+            { title: "Alien Tech Recovered", desc: "A meteorite contains alien technology. Privatize the research?", onAccept: { t:4000, a:-5, p:0, d:0, ten:10, l:-20, r:25 }, newsA: "CORPORATIONS BID MILLIONS FOR ALIEN METEORITE TECH.", onVeto: { t:-1000, a:10, p:0, d:0, ten:-5, l:15, r:-10 }, newsV: "ALIEN TECH KEPT IN SECRET GOVERNMENT FACILITIES." },
+            { title: "Volcano Tapping", desc: "Drill into a supervolcano for limitless geothermal energy.", onAccept: { t:2000, a:5, p:0, d:0, ten:15, l:-10, r:15 }, newsA: "GEOTHERMAL DRILLING BEGINS AT YELLOWSTONE. SEISMOLOGISTS PANIC.", onVeto: { t:0, a:5, p:0, d:0, ten:-5, l:10, r:-10 }, newsV: "VOLCANO DRILLING HALTED DUE TO ERUPTION RISKS." },
+            { title: "Ban Physical Cash", desc: "Force the entire economy to use trackable digital currency.", onAccept: { t:3000, a:-20, p:0, d:0, ten:5, l:20, r:-30 }, newsA: "CASH ABOLISHED. ALL TRANSACTIONS NOW MONITORED BY STATE.", onVeto: { t:0, a:15, p:0, d:0, ten:0, l:-15, r:20 }, newsV: "PRESIDENT PROTECTS PAPER MONEY. PRIVACY ADVOCATES RELIEVED." },
+            { title: "Corporate Militias", desc: "Allow mega-corporations to field their own private armies.", onAccept: { t:5000, a:-25, p:0, d:0, ten:20, l:-40, r:45 }, newsA: "CORPORATE MILITIAS LEGALIZED. PRIVATE ARMIES PATROL THE STREETS.", onVeto: { t:0, a:10, p:0, d:0, ten:-10, l:25, r:-25 }, newsV: "STATE MONOPOLY ON VIOLENCE UPHELD. CORPORATE ARMIES BANNED." },
+            { title: "Abolish Prisons", desc: "Replace all prisons with mandatory psychological rehabilitation.", onAccept: { t:2000, a:-15, p:0, d:0, ten:10, l:45, r:-50 }, newsA: "PRISONS EMPTIED. REHABILITATION CENTERS OVERWHELMED.", onVeto: { t:0, a:10, p:0, d:0, ten:-5, l:-30, r:30 }, newsV: "PENAL SYSTEM REMAINS INTACT. 'TOUGH ON CRIME' STANCE CONTINUES." },
+            { title: "Mandatory Euthanasia", desc: "Cap human lifespans at 90 to conserve critical state resources.", onAccept: { t:4000, a:-40, p:-2000, d:0, ten:25, l:-20, r:-20 }, newsA: "AGE 90 CAP MANDATED BY STATE. ELDERLY FLEE ACROSS BORDERS.", onVeto: { t:-2000, a:20, p:0, d:0, ten:0, l:10, r:10 }, newsV: "BARBARIC EUTHANASIA BILL SWIFTLY VETOED." },
+            { title: "Alien Embassy", desc: "Establish official diplomatic relations with extraterrestrials.", onAccept: { t:-1000, a:20, p:0, d:0, ten:5, l:15, r:-10 }, newsA: "EARTH OPENS FIRST ALIEN EMBASSY. INTERGALACTIC TRADE IMMINENT?", onVeto: { t:0, a:-10, p:0, d:0, ten:15, l:-10, r:15 }, newsV: "ALIEN DIPLOMATS TURNED AWAY AT THE BORDER." },
+            { title: "Weather Control", desc: "Deploy global cloud-seeding drones to optimize agriculture.", onAccept: { t:-3000, a:10, p:500, d:0, ten:0, l:10, r:5 }, newsA: "WEATHER NOW FULLY CONTROLLED BY STATE ALGORITHMS.", onVeto: { t:0, a:-5, p:-300, d:0, ten:0, l:-5, r:5 }, newsV: "WEATHER CONTROL DEEMED TOO RISKY. DROUGHTS CONTINUE." },
+            { title: "Genetic Caste System", desc: "Assign citizens jobs based purely on their DNA sequences.", onAccept: { t:5000, a:-30, p:0, d:0, ten:20, l:-40, r:30 }, newsA: "GENETIC SORTING ENACTED. FREE WILL OFFICIALLY DEAD.", onVeto: { t:0, a:15, p:0, d:0, ten:-5, l:25, r:-15 }, newsV: "PRESIDENT REJECTS DYSTOPIAN GENETIC JOB ASSIGNMENTS." },
+            { title: "Ban All Meat", desc: "Outlaw the consumption of natural animal meat.", onAccept: { t:1000, a:-30, p:0, d:0, ten:10, l:35, r:-40 }, newsA: "ALL MEAT BANNED. NATION FORCED Onto PLANT-BASED DIETS.", onVeto: { t:0, a:15, p:0, d:0, ten:0, l:-25, r:30 }, newsV: "MEAT BAN VETOED. CARNIVORES CELEBRATE." },
+            { title: "Dyson Swarm", desc: "Launch millions of solar mirrors to harvest the sun's energy.", onAccept: { t:-9000, a:25, p:1000, d:3000, ten:0, l:10, r:10 }, newsA: "DYSON SWARM CONSTRUCTION BEGINS. ENERGY CRISIS SOLVED FOREVER.", onVeto: { t:0, a:-10, p:0, d:0, ten:0, l:-5, r:-5 }, newsV: "MASSIVE DYSON SWARM PROJECT DEEMED TOO EXPENSIVE." },
+            { title: "Time Travel Research", desc: "Fund highly volatile temporal displacement experiments.", onAccept: { t:-4000, a:-5, p:0, d:0, ten:20, l:5, r:-5 }, newsA: "TIME TRAVEL LAB EXPLODES. TIMELINE APPARENTLY UNCHANGED.", onVeto: { t:0, a:5, p:0, d:0, ten:0, l:-5, r:5 }, newsV: "DANGEROUS TEMPORAL MECHANICS RESEARCH BANNED." },
+            { title: "Amnesia Gas", desc: "Pacify rioting cities by dropping memory-wiping chemicals.", onAccept: { t:-2000, a:-10, p:0, d:0, ten:-50, l:-30, r:20 }, newsA: "RIOTS MYSTERIOUSLY END AS CITIZENS FORGET WHY THEY WERE ANGRY.", onVeto: { t:0, a:5, p:0, d:0, ten:15, l:15, r:-10 }, newsV: "PRESIDENT REFUSES TO USE CHEMICAL WEAPONS ON CITIZENS." },
+            { title: "Nationalize Water", desc: "The government takes ownership of all freshwater lakes and rivers.", onAccept: { t:4000, a:-15, p:0, d:0, ten:10, l:30, r:-35 }, newsA: "WATER NATIONALIZED. CITIZENS NOW BILLED FOR COLLECTING RAIN.", onVeto: { t:0, a:10, p:0, d:0, ten:0, l:-20, r:20 }, newsV: "WATER REMAINS A PUBLIC GOOD." },
+            { title: "Legalize Dueling", desc: "Allow citizens to legally settle disputes through armed combat.", onAccept: { t:500, a:-10, p:-100, d:0, ten:5, l:-25, r:30 }, newsA: "TRIAL BY COMBAT RETURNS! STREET DUELS CAUSE SURGE IN RATINGS.", onVeto: { t:0, a:5, p:0, d:0, ten:0, l:15, r:-15 }, newsV: "DUELING REMAINS ILLEGAL. COURTS REMAIN BACKLOGGED." },
+            { title: "Holographic President", desc: "Let an AI avatar handle all public press briefings.", onAccept: { t:-500, a:10, p:0, d:0, ten:0, l:5, r:-5 }, newsA: "PRESIDENT REPLACED BY FLAWLESS HOLOGRAPHIC AVATAR ON TV.", onVeto: { t:0, a:0, p:0, d:0, ten:0, l:0, r:0 }, newsV: "PRESIDENT CONTINUES TO SWEAT THROUGH LIVE PRESS BRIEFINGS." },
+            { title: "Ban Human Driving", desc: "Only AI-piloted vehicles are allowed on national highways.", onAccept: { t:-1000, a:-5, p:200, d:0, ten:0, l:20, r:-25 }, newsA: "HUMAN DRIVING BANNED. TRAFFIC FATALITIES DROP TO ZERO.", onVeto: { t:0, a:10, p:-200, d:0, ten:0, l:-15, r:20 }, newsV: "THE RIGHT TO DRIVE SAVED FROM AI TAKEOVER." },
+            { title: "Tax Oxygen", desc: "Tax clean air in urban zones to fund industrial scrubbers.", onAccept: { t:3500, a:-25, p:0, d:0, ten:15, l:10, r:-20 }, newsA: "OXYGEN TAX ENACTED. BREATHING NOW COSTS PREMIUM RATES IN CITIES.", onVeto: { t:0, a:15, p:0, d:0, ten:0, l:-10, r:15 }, newsV: "OXYGEN TAX LAUGHED OUT OF CONGRESS." },
+            { title: "Space Pirates", desc: "Secretly fund privateers to raid rival nations' satellites.", onAccept: { t:2500, a:-5, p:0, d:0, ten:30, l:-15, r:20 }, newsA: "RIVAL SATELLITES MYSTERIOUSLY GO DARK. US TREASURY SURGES.", onVeto: { t:0, a:5, p:0, d:0, ten:-10, l:10, r:-10 }, newsV: "ORBITAL PIRACY DENIED. SPACE REMAINS PEACEFUL." },
+            { title: "Hive Mind Link", desc: "Create a neural network linking the minds of all volunteers.", onAccept: { t:-3000, a:5, p:0, d:0, ten:-10, l:15, r:-15 }, newsA: "HIVE MIND ACTIVATED. MILLIONS JOIN THE 'GREAT COLLECTIVE'.", onVeto: { t:0, a:-5, p:0, d:0, ten:5, l:-10, r:10 }, newsV: "NEURAL NETWORK BANNED. INDIVIDUALITY PRESERVED." },
+            { title: "Abolish the Weekend", desc: "Mandate a 7-day work week to maximize national GDP.", onAccept: { t:6000, a:-40, p:0, d:0, ten:25, l:-40, r:30 }, newsA: "WEEKEND ABOLISHED. EXHAUSTED WORKERS PROTEST IN THE STREETS.", onVeto: { t:-1000, a:20, p:0, d:0, ten:-5, l:30, r:-20 }, newsV: "THE WEEKEND IS SAVED. CORPORATE OVERLORDS DISAPPOINTED." },
+            { title: "Mandatory Veganism", desc: "State-enforced plant-based diets for all citizens.", onAccept: { t:-500, a:-25, p:500, d:0, ten:10, l:35, r:-40 }, newsA: "MANDATORY VEGANISM ENACTED. CHEESE SMUGGLING RAMPANT.", onVeto: { t:0, a:15, p:-100, d:0, ten:0, l:-25, r:30 }, newsV: "PRESIDENT EATS BURGER ON LIVE TV TO VETO VEGAN BILL." },
+            { title: "Sunshade Deployment", desc: "Launch a massive solar shade to cool the Earth's climate.", onAccept: { t:-7000, a:15, p:0, d:2000, ten:0, l:25, r:-20 }, newsA: "SOLAR SHADE DEPLOYED. GLOBAL TEMPERATURES DROP, SKIES DARKEN.", onVeto: { t:0, a:-10, p:0, d:0, ten:10, l:-20, r:15 }, newsV: "SOLAR SHADE REJECTED. CLIMATE CHANGE ACCELERATES." }
+        ];
+
+        let drawPile = []; let currentEvent = null;
+
+        function triggerGameOver(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerText = message;
+            document.getElementById('gameOverModal').style.display = 'flex';
+        }
+
+        function closeModalAndReset(modalId) { document.getElementById(modalId).style.display = 'none'; resetGame(); }
+
+        function resetGame() {
+            state = { treasury: 5000, approval: 50, pop: 10000, debt: 0, tension: 20, l: 50, r: 50, term: 1 };
+            debtHistory = [0]; turnsUntilElection = 12; electionCost = 6000;
+            ministries = { minFinance: false, minInfo: false, minDefense: false, secState: false };
+            techs = { cyber: false, fusion: false, pr: false, surveillance: false };
+            
+            ['taxIncome', 'taxCorp', 'healthcare', 'education', 'military', 'security', 'diplomacy'].forEach(id => document.getElementById(id).value = 2);
+            document.getElementById('welfare').value = 1; document.getElementById('debtRepay').value = 0;
+            
+            ['minFinance', 'minInfo', 'minDefense', 'secState'].forEach((role, i) => {
+                let btn = document.getElementById(`btn-${role}`);
+                btn.innerText = `$${[3, 4, 5, 6][i]}k`; btn.classList.remove('hired'); btn.disabled = false;
+            });
+            ['cyber', 'fusion', 'pr', 'surveillance'].forEach((tech, i) => {
+                let btn = document.getElementById(`tech-${tech}`);
+                btn.innerText = `$${[8, 12, 6, 10][i]}k`; btn.classList.remove('hired'); btn.disabled = false;
+            });
+
+            drawPile = []; drawNextCard(); updateUI();
+            updateTicker("SYSTEM REBOOTED. FRESH TERM BEGUN.");
+        }
+
+        function shuffle(array) {
+            let cur = array.length, rnd;
+            while (cur !== 0) { rnd = Math.floor(Math.random() * cur); cur--; [array[cur], array[rnd]] = [array[rnd], array[cur]]; }
+            return array;
+        }
+
+        function drawNextCard() {
+            if (drawPile.length === 0) drawPile = shuffle([...masterDeck]);
+            currentEvent = drawPile.pop(); 
+            document.getElementById('event-title').innerText = currentEvent.title;
+            document.getElementById('event-desc').innerText = currentEvent.desc;
+        }
+
+        function drawGraph() {
+            const canvas = document.getElementById('debtGraph'); const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=20) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            for(let i=0; i<canvas.height; i+=20) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
+
+            if (debtHistory.length < 2) return;
+            let maxDebt = Math.max(...debtHistory, 10000); let stepX = canvas.width / Math.max(debtHistory.length - 1, 10); 
+            ctx.beginPath(); ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+            for (let i = 0; i < debtHistory.length; i++) {
+                let x = i * stepX; let y = canvas.height - ((debtHistory[i] / maxDebt) * canvas.height);
+                y = Math.max(2, Math.min(y, canvas.height - 2)); 
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        function spawnFloat(id, val, prefix='', suffix='') {
+            if (val === 0) return;
+            const container = document.getElementById(id);
+            const floater = document.createElement('div');
+            const sign = val > 0 ? '+' : '';
+            floater.className = `floater ${val > 0 ? 'pos' : 'neg'}`;
+            if (id === 'hud-tension' && val > 0) floater.className = 'floater neg';
+            if (id === 'hud-tension' && val < 0) floater.className = 'floater pos';
+            floater.innerText = `${sign}${prefix}${Math.floor(val)}${suffix}`;
+            container.appendChild(floater);
+            setTimeout(() => floater.remove(), 2000);
+        }
+
+        function updateTicker(msg, isUrgent = false) {
+            const ticker = document.getElementById('ticker-content');
+            let prefix = isUrgent ? '<span class="ticker-highlight">URGENT ALARM</span>' : '<span class="ticker-highlight">BREAKING NEWS</span>';
+            ticker.innerHTML = `${prefix} ${msg}`;
+            ticker.style.animation = 'none'; ticker.offsetHeight; ticker.style.animation = null; 
+        }
+
+        function getProjections() {
+            let pT = 0, pA = 0, pP = 0, pD = 0, pTen = 0, pL = 0, pR = 0;
+            let popMult = state.pop / 1000;
+
+            let vals = ['taxIncome', 'taxCorp', 'welfare', 'healthcare', 'education', 'military', 'security', 'diplomacy'].map(id => parseInt(document.getElementById(id).value));
+            let debtRepay = [0, 200, 500, 1000, 2000][parseInt(document.getElementById('debtRepay').value)];
+
+            const maps = [
+                [ {t:-50, a:4, l:-5, r:5}, {t:-20, a:2, l:-2, r:2}, {t:0, a:0, l:0, r:0}, {t:30, a:-3, l:3, r:-3}, {t:60, a:-6, l:5, r:-5} ], // Inc
+                [ {t:-30, p:500, l:-5, r:10}, {t:-10, p:200, l:-2, r:5}, {t:0, p:0, l:0, r:0}, {t:40, p:-200, l:5, r:-5}, {t:80, p:-500, l:10, r:-10} ], // Corp
+                [ {t:15, a:-4, p:-200, l:-10, r:5}, {t:0, a:-1, p:0, l:-5, r:2}, {t:-30, a:1, p:100, l:0, r:0}, {t:-60, a:3, p:300, l:5, r:-5}, {t:-100, a:6, p:600, l:10, r:-10} ], // Wel
+                [ {t:20, a:-4, p:-400, l:-5, r:5}, {t:0, a:-1, p:-100, l:-2, r:2}, {t:-20, a:1, p:200, l:0, r:0}, {t:-50, a:3, p:400, l:5, r:-2}, {t:-90, a:5, p:800, l:10, r:-5} ], // Heal
+                [ {t:10, a:-3, p:-100, l:-5, r:2}, {t:0, a:-1, p:0, l:-2, r:1}, {t:-20, a:1, p:150, l:0, r:0}, {t:-40, a:3, p:300, l:5, r:-2}, {t:-70, a:5, p:500, l:8, r:-4} ], // Edu
+                [ {t:30, ten: 2, l:5, r:-10}, {t:10, ten: 0, l:2, r:-5}, {t:0, ten: 0, l:0, r:0}, {t:-40, ten: -1, l:-5, r:5}, {t:-80, ten: -3, l:-10, r:10} ], // Mil
+                [ {t:-15, a:3, p:0, l:5, r:-5}, {t:-5, a:1, p:0, l:2, r:-2}, {t:0, a:0, p:0, l:0, r:0}, {t:30, a:-3, p:-50, l:-5, r:5}, {t:60, a:-6, p:-100, l:-10, r:10} ], // Sec
+                [ {t:20, ten: 3, l:-5, r:5}, {t:0, ten: 1, l:-2, r:2}, {t:-20, ten: 0, l:0, r:0}, {t:-60, ten: -2, l:5, r:-2}, {t:-120, ten: -5, l:10, r:-5} ] // Dip
+            ];
+
+            vals.forEach((v, i) => {
+                let m = maps[i][v];
+                pT += (m.t || 0) * popMult; pA += (m.a || 0); pP += (m.p || 0);
+                pTen += (m.ten || 0); pL += (m.l || 0); pR += (m.r || 0);
+            });
+
+            if (state.l <= 10 || state.r <= 10) pA -= 5;
+            if (state.l <= 10 && state.r <= 10) pTen += 5;
+
+            // Techs & BUFFED Ministries
+            if (ministries.minFinance) pT += 1000;
+            if (ministries.minInfo) pA += 4;
+            if (ministries.minDefense) { pT += 500; pTen -= 3; }
+            if (ministries.secState) pTen -= 5;
+            
+            if (techs.cyber) pTen -= 1; 
+            if (techs.fusion) { pT += 800; pP += 500; }
+            if (techs.pr) pA += 2;
+            if (techs.surveillance) pA -= 1;
+
+            let interest = state.debt * 0.02; pT -= interest; 
+            let actualRepay = Math.min(debtRepay, state.debt); pT -= actualRepay; pD = interest - actualRepay; 
+            pTen += 1; // Base creep
+
+            return { t: pT, a: pA, p: pP, d: pD, ten: pTen, l: pL, r: pR, interest: interest };
+        }
+
+        function updateProjections() {
+            let proj = getProjections();
+            const format = (val, prefix, suffix, invert=false) => {
+                let clz = val >= 0 ? "pos" : "neg"; if (invert) clz = val > 0 ? "neg" : "pos";
+                return `<span class="${clz}">(${val >= 0 ? "+" : ""}${prefix}${Math.abs(Math.floor(val))}${suffix})</span>`;
+            };
+            document.getElementById('proj-treasury').innerHTML = format(proj.t, "$", "");
+            document.getElementById('proj-pop').innerHTML = format(proj.p, "", "");
+            document.getElementById('proj-tension').innerHTML = format(proj.ten, "", "%", true);
+            document.getElementById('proj-approval').innerHTML = format(proj.a, "", "%");
+            document.getElementById('proj-left').innerHTML = format(proj.l, "", "%");
+            document.getElementById('proj-right').innerHTML = format(proj.r, "", "%");
+            document.getElementById('debt-interest').innerText = `Int: $${Math.floor(proj.interest)}/turn`;
+            document.getElementById('debt-total').innerText = `Total Debt: $${Math.floor(state.debt)}`;
+        }
+
+        function applyTurnEffects() {
+            let proj = getProjections();
+            
+            spawnFloat('hud-treasury', proj.t, '$'); spawnFloat('hud-pop', proj.p); spawnFloat('hud-tension', proj.ten, '', '%');
+            spawnFloat('hud-approval', proj.a, '', '%'); spawnFloat('float-left', proj.l, '', '%'); spawnFloat('float-right', proj.r, '', '%');
+
+            state.treasury += proj.t; state.approval += proj.a; state.pop += proj.p; state.debt += proj.d; state.tension += proj.ten;
+            state.l += proj.l; state.r += proj.r;
+            
+            if (state.debt < 0) state.debt = 0; if (state.tension < 0) state.tension = 0;
+            state.approval = Math.max(0, Math.min(100, state.approval));
+            state.l = Math.max(0, Math.min(100, state.l)); state.r = Math.max(0, Math.min(100, state.r));
+            
+            debtHistory.push(state.debt); if(debtHistory.length > 30) debtHistory.shift();
+            turnsUntilElection--;
+        }
+
+        function updateUI() {
+            // NEW LOSS CONDITIONS
+            if (state.approval <= 15) { triggerGameOver("OVERTHROWN", `Public approval dropped to ${Math.floor(state.approval)}%. The citizens have stormed the capital and removed you from power.`); return; }
+            if (state.l <= 15 && state.r <= 15) { triggerGameOver("IMPEACHED", `Congress approval across the aisle is critically low. A bipartisan coalition has successfully impeached and ousted you from office.`); return; }
+            
+            if (state.tension >= 100) { triggerGameOver("WORLD WAR", `Global tension reached 100%. Missiles have been launched.`); return; }
+            if (state.treasury < 0) { triggerGameOver("BANKRUPT", `The treasury is empty. The state has collapsed.`); return; }
+            if (state.pop <= 0) { triggerGameOver("POPULATION COLLAPSE", `No citizens remain.`); return; }
+
+            // Dynamic Background based on Tension
+            if (state.tension >= 80) {
+                document.body.style.backgroundColor = '#330000'; // Dark Red
+            } else if (state.tension >= 50) {
+                document.body.style.backgroundColor = '#1a0000'; // Very Dark Red
+            } else {
+                document.body.style.backgroundColor = 'var(--bg)'; // Normal Black
+            }
+
+            document.getElementById('stat-approval').innerText = `${Math.floor(state.approval)}%`;
+            document.getElementById('stat-approval').classList.toggle('danger-text', state.approval <= 30);
+            
+            document.getElementById('stat-left').innerText = `${Math.floor(state.l)}%`;
+            document.getElementById('stat-right').innerText = `${Math.floor(state.r)}%`;
+            
+            document.getElementById('bar-left-fill').style.width = `${state.l / 2}%`;
+            document.getElementById('bar-right-fill').style.width = `${state.r / 2}%`;
+
+            document.getElementById('stat-tension').innerText = `${Math.floor(state.tension)}%`;
+            document.getElementById('stat-tension').classList.toggle('danger-text', state.tension >= 80);
+            document.getElementById('stat-treasury').innerText = `$${Math.floor(state.treasury)}`;
+            document.getElementById('stat-pop').innerText = `${(state.pop / 1000).toFixed(1)}k`;
+            document.getElementById('turn-tracker').innerText = `Next Election: ${turnsUntilElection} Turns`;
+            document.getElementById('term-tracker').innerText = `Term: ${state.term} / 4`;
+
+            updateProjections(); drawGraph();
+
+            // Handle Buttons
+            const mCosts = { minFinance: 3000, minInfo: 4000, minDefense: 5000, secState: 6000 };
+            for (let role in mCosts) { let btn = document.getElementById(`btn-${role}`); if (!ministries[role]) btn.disabled = state.treasury < mCosts[role]; }
+            
+            const tCosts = { cyber: 8000, fusion: 12000, pr: 6000, surveillance: 10000 };
+            for (let tech in tCosts) { let btn = document.getElementById(`tech-${tech}`); if (!techs[tech]) btn.disabled = state.treasury < tCosts[tech]; }
+
+            document.getElementById('act-propaganda').disabled = state.treasury < 1500;
+            document.getElementById('act-appease').disabled = state.treasury < 3000 || state.tension <= 0;
+            document.getElementById('act-smear').disabled = state.treasury < 2500;
+            document.getElementById('act-blackops').disabled = state.treasury < 5000;
+        }
+
+        function handleElection() {
+            const modal = document.getElementById('electionModal');
+            const desc = document.getElementById('election-desc');
+            const actionDiv = document.getElementById('election-actions');
+            actionDiv.innerHTML = ''; 
+
+            let modifiedCost = electionCost;
+            if (state.l < 30) modifiedCost += 2000; if (state.r < 30) modifiedCost += 2000;
+
+            if (state.approval >= 50) {
+                desc.innerText = `Your approval is ${Math.floor(state.approval)}%. You secured a comfortable victory in the elections.`;
+                let btn = document.createElement('button'); btn.className = 'btn'; btn.innerText = "Begin Next Term";
+                btn.onclick = () => { modal.style.display = 'none'; resetElectionCycle(); };
+                actionDiv.appendChild(btn);
+            } else {
+                desc.innerHTML = `Your approval is <span style="color:#cc0000">${Math.floor(state.approval)}%</span>. You will lose unless you intervene.<br><br>Campaign Funding requires <strong>$${modifiedCost}</strong>.`;
+                let fundBtn = document.createElement('button'); fundBtn.className = 'btn';
+                fundBtn.innerText = `Fund Campaign ($${modifiedCost})`;
+                if (state.treasury >= modifiedCost) {
+                    fundBtn.onclick = () => { state.treasury -= modifiedCost; modal.style.display = 'none'; resetElectionCycle(); updateTicker("CONTROVERSIAL LATE-NIGHT BALLOT COUNT SECURES PRESIDENTIAL REELECTION.");};
+                } else { fundBtn.disabled = true; fundBtn.innerText = `Insufficient Funds`; }
+                actionDiv.appendChild(fundBtn);
+
+                let concedeBtn = document.createElement('button'); concedeBtn.className = 'btn'; concedeBtn.innerText = "Concede Defeat";
+                concedeBtn.onclick = () => { modal.style.display = 'none'; triggerGameOver("VOTED OUT", `Your approval was too low and you could not afford to swing the election.`); };
+                actionDiv.appendChild(concedeBtn);
+            }
+            modal.style.display = 'flex';
+        }
+
+        function resetElectionCycle() { 
+            state.term++; 
+            // VICTORY CONDITION CHECK
+            if (state.term > 4) {
+                document.getElementById('victoryModal').style.display = 'flex';
+                return;
+            }
+            turnsUntilElection = 12; 
+            electionCost += 3000; 
+            updateTicker("INCUMBENT PRESIDENT SECURES ANOTHER TERM.");
+            updateUI();
+        }
+
+        function buyMinister(role, cost) {
+            if (state.treasury >= cost && !ministries[role]) {
+                state.treasury -= cost; ministries[role] = true;
+                let btn = document.getElementById(`btn-${role}`); btn.innerText = "Active"; btn.classList.add('hired'); btn.disabled = true;
+                spawnFloat('hud-treasury', -cost, '$'); updateTicker(`WHITE HOUSE APPOINTS NEW ${role.toUpperCase().replace('MIN', 'MINISTER').replace('SEC', 'SECRETARY')}.`); updateUI();
+            }
+        }
+
+        function buyTech(tech, cost) {
+            if (state.treasury >= cost && !techs[tech]) {
+                state.treasury -= cost; techs[tech] = true;
+                let btn = document.getElementById(`tech-${tech}`); btn.innerText = "Online"; btn.classList.add('hired'); btn.disabled = true;
+                spawnFloat('hud-treasury', -cost, '$'); updateTicker(`MASSIVE FEDERAL GRANT APPROVES ${tech.toUpperCase()} PROJECT.`); updateUI();
+            }
+        }
+
+        function buyAction(actionType) {
+            if (actionType === 'propaganda' && state.treasury >= 1500) { state.treasury -= 1500; state.approval += 5; spawnFloat('hud-treasury', -1500, '$'); spawnFloat('hud-approval', 5, '','%'); updateTicker("GOVERNMENT-BACKED MEDIA CAMPAIGN SWEEPS AIRWAVES.");}
+            if (actionType === 'bonds') { state.treasury += 2000; state.debt += 2200; spawnFloat('hud-treasury', 2000, '$'); updateTicker("TREASURY ISSUES MILLIONS IN NEW GOVERNMENT BONDS.");}
+            if (actionType === 'bailout') { state.treasury += 5000; state.debt += 6500; state.approval -= 5; spawnFloat('hud-treasury', 5000, '$'); spawnFloat('hud-approval', -5, '','%'); updateTicker("CONTROVERSIAL CORPORATE BAILOUT APPROVED BY EXECUTIVE ORDER.");}
+            if (actionType === 'appease' && state.treasury >= 3000) { state.treasury -= 3000; state.tension = Math.max(0, state.tension - 15); spawnFloat('hud-treasury', -3000, '$'); spawnFloat('hud-tension', -15, '','%'); updateTicker("DIPLOMATIC SUMMIT DE-ESCALATES GLOBAL TENSIONS.");}
+            
+            let successRate = techs.surveillance ? 1.0 : 0.65;
+
+            if (actionType === 'smear' && state.treasury >= 2500) {
+                state.treasury -= 2500; spawnFloat('hud-treasury', -2500, '$');
+                if (Math.random() <= successRate) {
+                    state.approval += 15; state.l += 15; state.r += 15;
+                    spawnFloat('hud-approval', 15, '','%'); spawnFloat('float-left', 15, '','%'); spawnFloat('float-right', 15, '','%');
+                    updateTicker("SCANDAL ROCKS OPPOSITION LEADERSHIP! POLL NUMBERS SURGE FOR PRESIDENT.");
+                } else {
+                    state.approval -= 20; state.tension += 10;
+                    spawnFloat('hud-approval', -20, '','%'); spawnFloat('hud-tension', 10, '','%');
+                    updateTicker("WHITE HOUSE TIED TO FAILED SMEAR CAMPAIGN. INVESTIGATION IMMINENT.", true);
+                }
+            }
+
+            if (actionType === 'blackops' && state.treasury >= 5000) {
+                state.treasury -= 5000; spawnFloat('hud-treasury', -5000, '$');
+                if (Math.random() <= (successRate - 0.15)) { 
+                    state.tension = Math.max(0, state.tension - 40); spawnFloat('hud-tension', -40, '','%');
+                    updateTicker("UNCONFIRMED REPORTS OF COVERT MILITARY STRIKES ABROAD.");
+                } else {
+                    state.tension = 99; state.approval -= 30;
+                    spawnFloat('hud-tension', 99, '','%'); spawnFloat('hud-approval', -30, '','%');
+                    updateTicker("AMERICAN OPERATIVES CAPTURED. HOSTILE NATIONS MOBILIZE FOR WAR!", true);
+                }
+            }
+
+            updateUI(); drawGraph();
+        }
+
+        function makeDecision(isAccepted) {
+            const effects = isAccepted ? currentEvent.onAccept : currentEvent.onVeto;
+            
+            if (effects.slider) { document.getElementById(effects.slider.id).value = effects.slider.val; }
+            
+            if (effects.l) { state.l += effects.l; spawnFloat('float-left', effects.l, '','%'); }
+            if (effects.r) { state.r += effects.r; spawnFloat('float-right', effects.r, '','%'); }
+            if (effects.t) { state.treasury += effects.t; spawnFloat('hud-treasury', effects.t, '$'); }
+            if (effects.a) { state.approval += effects.a; spawnFloat('hud-approval', effects.a, '','%'); }
+            if (effects.p) { state.pop += effects.p; spawnFloat('hud-pop', effects.p); }
+            if (effects.ten) { state.tension += effects.ten; spawnFloat('hud-tension', effects.ten, '','%'); }
+            if (effects.d) state.debt += effects.d;
+
+            let newsHeadline = isAccepted ? currentEvent.newsA : currentEvent.newsV;
+            updateTicker(newsHeadline);
+            applyTurnEffects();
+            
+            const panel = document.getElementById('event-panel'); panel.style.transform = 'scale(0.98)';
+            setTimeout(() => panel.style.transform = 'scale(1)', 150);
+            
+            if (turnsUntilElection <= 0) handleElection(); else drawNextCard();
+            updateUI();
+        }
+
+        resetGame();
+    </script>
+</body>
+</html>
