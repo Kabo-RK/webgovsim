@@ -96,33 +96,57 @@
         .covert-btn { background: linear-gradient(to bottom, #990000, #330000); border-color: #ff0000;}
         .covert-btn:hover:not(:disabled) { background: linear-gradient(to bottom, #cc0000, #550000); }
         .hired { background: #fff !important; color: #000 !important; border: 1px solid #000 !important; cursor: default !important; font-weight: bold;}
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100000; }
         .modal-box { background: linear-gradient(to bottom, var(--panel-top), var(--panel-bottom)); color: var(--text-dark); padding: 30px; border-radius: 8px; max-width: 380px; width: 90%; text-align: center; border: 2px solid #555; box-shadow: 0 0 20px rgba(255, 255, 255, 0.2); }
         .modal-box h2 { margin-top: 0; text-transform: uppercase; border-bottom: 1px solid #999; padding-bottom: 10px; }
         .modal-box.danger h2 { color: #cc0000; }
         .modal-box.victory h2 { color: #006600; }
         .modal-box p { font-size: 1.1em; line-height: 1.4; margin-bottom: 25px; font-weight: bold; }
+        
+        /* NEWS TICKER */
         .news-ticker {
             position: fixed; bottom: 0; left: 0; width: 100%; background: #111; border-top: 2px solid #444;
-            color: #00ff00; font-family: monospace; font-size: 1.1em; padding: 8px 0; white-space: nowrap; overflow: hidden; z-index: 100;
+            color: #00ff00; font-family: monospace; font-size: 1.1em; padding: 8px 0; white-space: nowrap; 
+            overflow: hidden; z-index: 9000;
         }
         .ticker-text { display: inline-block; padding-left: 100%; animation: scrollTicker 18s linear infinite; }
         .ticker-highlight { color: #ffffff; background: #cc0000; padding: 0 5px; font-weight: bold;}
         @keyframes scrollTicker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        
+        /* DESKTOP AD CONTAINER */
         .ad-container {
             position: fixed; right: 20px; top: 50%; transform: translateY(-50%);
             width: 160px; height: 600px; background: transparent;
             display: flex; align-items: center; justify-content: center; z-index: 10;
         }
+
+        /* MOBILE AD CONTAINER - BULLETPROOFED */
         .mobile-ad-container {
-            display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 50px;
-            background: transparent; align-items: center; justify-content: center; z-index: 105;
+            display: none; 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 50px !important; /* Forces strict height */
+            max-height: 50px !important; 
+            background: #000000; /* Solid background prevents transparency bleed */
+            align-items: center; 
+            justify-content: center; 
+            text-align: center; 
+            z-index: 9999 !important; /* Keeps ad below modals but above game */
+            overflow: hidden !important; /* HIDES any oversized Adzilla images */
         }
+        
+        /* Forces any child elements (like the Adzilla grid) to shrink or clip */
+        .mobile-ad-container * {
+            max-height: 50px !important;
+        }
+
         @media (max-width: 1450px) {
             .ad-container { display: none; }
             .mobile-ad-container { display: flex; }
-            .news-ticker { bottom: 50px; }
-            body { padding-bottom: 120px; }
+            .news-ticker { bottom: 50px !important; } /* Pushes ticker exactly above the 50px ad */
+            body { padding-bottom: 120px; } /* Ensures user can scroll down to the bottom stats */
         }
     </style>
 </head>
@@ -130,13 +154,13 @@
 
     <div class="ad-container" id="ad-space">
         <script>
-          atOptions = {
-            'key' : 'ebeeec22a06a3e0ed9e83026b0c4b0de',
-            'format' : 'iframe',
-            'height' : 600,
-            'width' : 160,
-            'params' : {}
-          };
+            atOptions = {
+                'key' : 'ebeeec22a06a3e0ed9e83026b0c4b0de',
+                'format' : 'iframe',
+                'height' : 600,
+                'width' : 160,
+                'params' : {}
+            };
         </script>
         <script src="https://www.highperformanceformat.com/ebeeec22a06a3e0ed9e83026b0c4b0de/invoke.js"></script>
     </div>
